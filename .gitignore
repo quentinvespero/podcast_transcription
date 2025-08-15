@@ -3,3 +3,4 @@
 whisper.cpp
 *.wav
 .DS_Store
+vllm
