@@ -1,20 +1,27 @@
-from transformers import VoxtralForConditionalGeneration, AutoProcessor
-import torch
+import os
+from mistralai import Mistral
+from dotenv import load_dotenv
+import time
 
-device = "cuda"
-repo_id = "mistralai/Voxtral-Mini-3B-2507"
+load_dotenv()
 
-processor = AutoProcessor.from_pretrained(repo_id)
-model = VoxtralForConditionalGeneration.from_pretrained(repo_id, torch_dtype=torch.bfloat16, device_map=device)
+api_key = os.getenv("MISTRAL_API_KEY")
 
-inputs = processor.apply_transcription_request(language="en", audio="https://huggingface.co/datasets/hf-internal-testing/dummy-audio-samples/resolve/main/obama.mp3", model_id=repo_id)
-inputs = inputs.to(device, dtype=torch.float16)
+model = "voxtral-mini-latest"
 
-outputs = model.generate(**inputs, max_new_tokens=500)
-decoded_outputs = processor.batch_decode(outputs[:, inputs.input_ids.shape[1]:], skip_special_tokens=True)
+# initialise mistral client
+client = Mistral(api_key=api_key)
 
-print("\nGenerated responses:")
-print("=" * 80)
-for decoded_output in decoded_outputs:
-    print(decoded_output)
-    print("=" * 80)
+# getting transcription
+with open('./s10e43_trimmed_benchmark.mp3', 'rb') as file:
+    transcription_response = client.audio.transcriptions.complete(
+        timestamp_granularities=['segment'],
+        language='fr',
+        model=model,
+        file={
+            'content': file ,
+            'file_name':'./s10e43_trimmed_benchmark.mp3'
+            },
+)
+
+print(transcription_response.language, transcription_response.segments)
