@@ -4,5 +4,6 @@ whisper.cpp
 *.wav
 .DS_Store
 vllm
+.env
 .cursor
 *.gguf
