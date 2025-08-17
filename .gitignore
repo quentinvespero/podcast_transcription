@@ -5,3 +5,4 @@ whisper.cpp
 .DS_Store
 vllm
 .cursor
+*.gguf
