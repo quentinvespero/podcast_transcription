@@ -13,6 +13,7 @@ model = "voxtral-mini-latest"
 client = Mistral(api_key=api_key)
 
 # getting transcription from local file
+# rb stands for read binary
 with open('./s10e43_trimmed_benchmark.mp3', 'rb') as file:
     transcription_response = client.audio.transcriptions.complete(
         model=model,
