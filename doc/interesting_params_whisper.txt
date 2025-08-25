@@ -13,5 +13,7 @@
 -bo N,     --best-of N         [5      ] number of best candidates to keep
 -et N,     --entropy-thold N   [2.40   ] entropy threshold for decoder fail
 -dtw MODEL --dtw MODEL         [       ] compute token-level timestamps
+
+
 -tp,       --temperature N     [0.00   ] The sampling temperature, between 0 and 1
-  -tpi,      --temperature-inc N [0.20   ] The increment of temperature, between 0 and 1
+-tpi,      --temperature-inc N [0.20   ] The increment of temperature, between 0 and 1
