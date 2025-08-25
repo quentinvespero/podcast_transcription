@@ -8,3 +8,4 @@ vllm
 .cursor
 *.gguf
 pywhispercpp
+transcription*
