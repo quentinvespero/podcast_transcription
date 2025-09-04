@@ -9,3 +9,4 @@ vllm
 *.gguf
 pywhispercpp
 transcription*
+*.db
