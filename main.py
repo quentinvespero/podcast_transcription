@@ -1,0 +1,103 @@
+"""
+Entry point for the podcast transcription tool.
+
+Usage:
+    python main.py ingest <url> [--language fr]
+    python main.py search keyword <query> [--limit 10]
+    python main.py search semantic <query> [--limit 10]
+"""
+
+import argparse
+
+from src.config import DB_PATH
+from src.database import sqlite_store, vector_store
+from src import embedder
+from src.pipeline import ingest
+
+
+# ── Command handlers ─────────────────────────────────────────────────────────
+
+def _cmd_ingest(args: argparse.Namespace) -> None:
+    ingest(args.url, language=args.language, force=args.force)
+
+
+def _cmd_search_keyword(args: argparse.Namespace) -> None:
+    results = sqlite_store.search_keyword(DB_PATH, args.query, limit=args.limit)
+
+    if not results:
+        print("No results found.")
+        return
+
+    for r in results:
+        print(f"\n[{r['source_title']}]  {r['start_time']:.1f}s – {r['end_time']:.1f}s")
+        print(f"  {r['text']}")
+
+
+def _cmd_search_semantic(args: argparse.Namespace) -> None:
+    # Embed the query with the same model used during ingest
+    query_vector = embedder.embed_texts([args.query])[0]
+    results      = vector_store.search_semantic(query_vector, limit=args.limit)
+
+    if not results:
+        print("No results found.")
+        return
+
+    for r in results:
+        print(
+            f"\n[{r['source_title']}]  {r['start_time']:.1f}s – {r['end_time']:.1f}s"
+            f"  (similarity: {r['score']:.3f})"
+        )
+        print(f"  {r['text']}")
+
+
+# ── CLI definition ───────────────────────────────────────────────────────────
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Transcribe audio and search transcripts"
+    )
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    # ── ingest ────────────────────────────────────────────────────────────────
+    ingest_p = subparsers.add_parser(
+        "ingest",
+        help="Download, transcribe, and index an audio URL",
+    )
+    ingest_p.add_argument("url", help="YouTube, SoundCloud, or any yt-dlp-compatible URL")
+    ingest_p.add_argument(
+        "--language", "-l",
+        help="Language hint for Whisper (e.g. 'fr', 'en'). Default: auto-detect",
+        default=None,
+    )
+    ingest_p.add_argument(
+        "--force", "-f",
+        action="store_true",
+        default=False,
+        help="Re-download and re-transcribe even if already processed.",
+    )
+    ingest_p.set_defaults(func=_cmd_ingest)
+
+    # ── search ────────────────────────────────────────────────────────────────
+    search_p    = subparsers.add_parser("search", help="Search indexed transcripts")
+    search_subs = search_p.add_subparsers(dest="search_type", required=True)
+
+    for name, help_text, func in [
+        ("keyword",  "Exact / full-text keyword search",  _cmd_search_keyword),
+        ("semantic", "Semantic similarity search",        _cmd_search_semantic),
+    ]:
+        p = search_subs.add_parser(name, help=help_text)
+        p.add_argument("query", help="Search query")
+        p.add_argument("--limit", type=int, default=10, help="Max results (default: 10)")
+        p.set_defaults(func=func)
+
+    return parser
+
+
+def main() -> None:
+    parser = _build_parser()
+    args   = parser.parse_args()
+    args.func(args)
+
+
+if __name__ == "__main__":
+    main()

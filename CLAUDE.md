@@ -21,7 +21,7 @@ A self-contained desktop application that anyone can download and run locally â€
 
 - **Platform:** macOS, Apple Silicon (M-series chip)
 - **Transcription:** `mlx-whisper` (Apple MLX framework â€” fast, native Apple Silicon support, no CUDA needed)
-- **Python:** 3.11+, managed via `.venv`
+- **Python:** 3.11+, managed via `uv` + `.venv`
 
 ## Architecture (target)
 
@@ -51,8 +51,16 @@ Audio URL (YouTube, podcast RSS, etc.)
 
 ### Python Environment
 ```bash
+# Install uv if not already installed
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Create venv and install dependencies
+uv venv --python 3.11
 source .venv/bin/activate
-pip install -r requirements.txt
+uv pip install -r requirements.txt
+
+# Or run a command directly without activating the venv
+uv run python main.py ingest "..."
 ```
 
 ### Qdrant (Vector DB via Docker)
