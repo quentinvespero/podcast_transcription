@@ -80,5 +80,16 @@ docker stop qdrant
 mlx_whisper --model mlx-community/whisper-large-v3-turbo --language fr <audio.mp3>
 ```
 
+## Tracking Progress
+
+A `PROGRESS.md` file at the root tracks the status of each pipeline step and a milestone log.
+
+**Update it when:**
+- A pipeline step reaches a meaningful milestone (first working implementation, schema change, confirmed working end-to-end, etc.)
+- A known gap or limitation is resolved
+- A new significant gap is discovered
+
+**Do not** update it for minor fixes, refactors, or work-in-progress changes.
+
 ## Gitignored Paths
 Audio files (`.mp3`, `.wav`), model weights, the `whisper.cpp` submodule, and the `data/` directory are gitignored and must be set up locally.
