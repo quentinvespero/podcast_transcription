@@ -63,7 +63,10 @@ def _build_parser() -> argparse.ArgumentParser:
         "ingest",
         help="Download, transcribe, and index an audio URL",
     )
-    ingest_p.add_argument("url", help="YouTube, SoundCloud, or any yt-dlp-compatible URL")
+    ingest_p.add_argument(
+        "url", 
+        help="YouTube, SoundCloud, or any yt-dlp-compatible URL"
+    )
     ingest_p.add_argument(
         "--language", "-l",
         help="Language hint for Whisper (e.g. 'fr', 'en'). Default: auto-detect",

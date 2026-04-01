@@ -11,8 +11,6 @@ QDRANT_PORT       = 6333
 QDRANT_COLLECTION = "segments"
 
 # ── Transcription ────────────────────────────────────────────────────────────
-# mlx-community hosts Apple Silicon-optimised Whisper weights on HuggingFace.
-# large-v3-turbo is the recommended balance of speed vs. accuracy on M-series.
 TRANSCRIPTION_MODEL = "mlx-community/whisper-large-v3-turbo"
 
 # ── Embeddings ───────────────────────────────────────────────────────────────
