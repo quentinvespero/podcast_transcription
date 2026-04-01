@@ -1,0 +1,171 @@
+import sqlite3
+from contextlib import contextmanager
+
+
+@contextmanager
+def _connect(db_path: str):
+    """Context manager that opens a connection and commits on success."""
+    conn = sqlite3.connect(db_path)
+    # Return rows as dict-like objects (access by column name)
+    conn.row_factory = sqlite3.Row
+    # Enable foreign-key enforcement (off by default in SQLite)
+    conn.execute("PRAGMA foreign_keys = ON")
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def init_db(db_path: str) -> None:
+    """
+    Create tables and FTS index if they don't already exist.
+
+    Schema:
+      sources  — one row per audio source (YouTube video, podcast episode…)
+      segments — one row per Whisper segment, linked to a source
+      segments_fts — FTS5 virtual table mirroring segments.text for keyword search
+
+    Triggers keep segments_fts in sync with segments automatically.
+    """
+    with _connect(db_path) as conn:
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS sources (
+                id       INTEGER PRIMARY KEY AUTOINCREMENT,
+                title    TEXT    NOT NULL,
+                url      TEXT    UNIQUE NOT NULL,
+                status   TEXT    NOT NULL DEFAULT 'pending',
+                added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS segments (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                source_id  INTEGER NOT NULL REFERENCES sources(id) ON DELETE CASCADE,
+                start_time REAL    NOT NULL,
+                end_time   REAL    NOT NULL,
+                text       TEXT    NOT NULL
+            );
+
+            -- FTS5 content table: only indexes 'text', delegate storage to segments
+            CREATE VIRTUAL TABLE IF NOT EXISTS segments_fts USING fts5(
+                text,
+                content=segments,
+                content_rowid=id
+            );
+
+            -- Keep the FTS index in sync with the segments table
+            CREATE TRIGGER IF NOT EXISTS segments_ai AFTER INSERT ON segments BEGIN
+                INSERT INTO segments_fts(rowid, text) VALUES (new.id, new.text);
+            END;
+            CREATE TRIGGER IF NOT EXISTS segments_ad AFTER DELETE ON segments BEGIN
+                INSERT INTO segments_fts(segments_fts, rowid, text)
+                    VALUES ('delete', old.id, old.text);
+            END;
+            CREATE TRIGGER IF NOT EXISTS segments_au AFTER UPDATE ON segments BEGIN
+                INSERT INTO segments_fts(segments_fts, rowid, text)
+                    VALUES ('delete', old.id, old.text);
+                INSERT INTO segments_fts(rowid, text) VALUES (new.id, new.text);
+            END;
+        """)
+
+        # Migration: add status column to existing databases that predate it
+        try:
+            conn.execute(
+                "ALTER TABLE sources ADD COLUMN status TEXT NOT NULL DEFAULT 'pending'"
+            )
+        except sqlite3.OperationalError:
+            pass  # column already exists
+
+
+def get_source_status(db_path: str, url: str) -> str | None:
+    """
+    Return the ingest status of a source by URL, or None if not found.
+    Possible values: 'pending', 'complete'.
+    """
+    with _connect(db_path) as conn:
+        row = conn.execute(
+            "SELECT status FROM sources WHERE url = ?", (url,)
+        ).fetchone()
+    return row["status"] if row else None
+
+
+def mark_source_complete(db_path: str, source_id: int) -> None:
+    """Mark a source as fully ingested (all pipeline stages done)."""
+    with _connect(db_path) as conn:
+        conn.execute(
+            "UPDATE sources SET status = 'complete' WHERE id = ?", (source_id,)
+        )
+
+
+def delete_source(db_path: str, url: str) -> None:
+    """
+    Delete a source and all its segments by URL.
+    Segments are removed automatically via ON DELETE CASCADE.
+    Note: corresponding Qdrant points are NOT cleaned up here.
+    """
+    with _connect(db_path) as conn:
+        conn.execute("DELETE FROM sources WHERE url = ?", (url,))
+
+
+def insert_source(db_path: str, title: str, url: str) -> int:
+    """
+    Insert a source row (or ignore if URL already exists).
+    Returns the source id in either case.
+    """
+    with _connect(db_path) as conn:
+        conn.execute(
+            "INSERT OR IGNORE INTO sources (title, url) VALUES (?, ?)",
+            (title, url),
+        )
+        row = conn.execute("SELECT id FROM sources WHERE url = ?", (url,)).fetchone()
+        return row["id"]
+
+
+def insert_segments(db_path: str, source_id: int, segments: list[dict]) -> list[int]:
+    """
+    Bulk-insert transcription segments for a source.
+    Returns the list of inserted row IDs (in insertion order).
+    """
+    with _connect(db_path) as conn:
+        ids = []
+        for seg in segments:
+            cursor = conn.execute(
+                "INSERT INTO segments (source_id, start_time, end_time, text)"
+                " VALUES (?, ?, ?, ?)",
+                (source_id, seg["start"], seg["end"], seg["text"]),
+            )
+            ids.append(cursor.lastrowid)
+        return ids
+
+
+def search_keyword(db_path: str, query: str, limit: int = 10) -> list[dict]:
+    """
+    Full-text search across all segments.
+
+    Results are ranked by FTS relevance (best match first).
+    Each result includes the source title, URL, timestamps, and matched text.
+    """
+    with _connect(db_path) as conn:
+        rows = conn.execute(
+            """
+            SELECT
+                s.id,
+                s.start_time,
+                s.end_time,
+                s.text,
+                src.title AS source_title,
+                src.url   AS source_url,
+                rank
+            FROM segments_fts
+            JOIN segments s   ON segments_fts.rowid = s.id
+            JOIN sources  src ON s.source_id = src.id
+            WHERE segments_fts MATCH ?
+            ORDER BY rank
+            LIMIT ?
+            """,
+            (query, limit),
+        ).fetchall()
+        return [dict(row) for row in rows]
