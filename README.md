@@ -19,7 +19,6 @@ _primarily macOS-compatible for now, but support will expand in the future_
 - macOS, Apple Silicon (M-series) - _(support will expand in the futur)_
 - Python 3.11+
 - [uv](https://github.com/astral-sh/uv) (package manager)
-- [Docker](https://www.docker.com/) (for Qdrant)
 - ffmpeg
 
 ```bash
@@ -33,16 +32,6 @@ brew install ffmpeg
 uv venv --python 3.11
 source .venv/bin/activate
 uv pip install -r requirements.txt
-```
-
-Start the Qdrant vector database (required for semantic search):
-
-```bash
-# First run — create container with persistent storage
-docker run -p 6333:6333 --name qdrant -v $(pwd)/data/qdrant_db:/qdrant/storage qdrant/qdrant
-
-# Subsequent runs
-docker start qdrant
 ```
 
 ## Usage

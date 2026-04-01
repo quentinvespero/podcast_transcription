@@ -40,7 +40,7 @@ Audio URL (YouTube, podcast RSS, etc.)
 | Audio fetch | yt-dlp | Handles YouTube, SoundCloud, Acast, etc. |
 | Transcription | mlx-whisper | Optimized for Apple Silicon via MLX |
 | Keyword search | SQLite FTS5 | Built into Python stdlib (`sqlite3`) |
-| Semantic search | Qdrant | Runs via Docker on port 6333 |
+| Semantic search | Qdrant | Embedded (no Docker needed), stored in `data/qdrant_db/` |
 | Embeddings | TBD | A small multilingual model (e.g. `sentence-transformers`) |
 
 ### SQLite Schema
@@ -61,17 +61,6 @@ uv pip install -r requirements.txt
 
 # Or run a command directly without activating the venv
 uv run python main.py ingest "..."
-```
-
-### Qdrant (Vector DB via Docker)
-```bash
-# First run — create container with persistent storage
-docker run -p 6333:6333 --name qdrant -v $(pwd)/data/qdrant_db:/qdrant/storage qdrant/qdrant
-
-# Subsequent runs
-docker start qdrant        # background
-docker start -a qdrant     # with output
-docker stop qdrant
 ```
 
 ### Transcription (mlx-whisper)

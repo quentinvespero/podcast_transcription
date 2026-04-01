@@ -6,8 +6,7 @@ AUDIO_DIR = os.path.join(DATA_DIR, "audio")
 DB_PATH   = os.path.join(DATA_DIR, "transcriptions.db")
 
 # ── Qdrant (vector database) ─────────────────────────────────────────────────
-QDRANT_HOST       = "localhost"
-QDRANT_PORT       = 6333
+QDRANT_PATH       = os.path.join(DATA_DIR, "qdrant_db")
 QDRANT_COLLECTION = "segments"
 
 # ── Transcription ────────────────────────────────────────────────────────────
