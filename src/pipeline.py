@@ -54,7 +54,7 @@ def ingest(url: str, language: str | None = None, force: bool = False, initial_p
 
     # ── 3. SQLite ────────────────────────────────────────────────────────────
     print("[3/4] Storing in SQLite …")
-    source_id   = sqlite_store.insert_source(DB_PATH, audio_info["title"], url)
+    source_id   = sqlite_store.insert_source(DB_PATH, audio_info["title"], url, audio_info["description"])
     segment_ids = sqlite_store.insert_segments(DB_PATH, source_id, segments)
     print(f"      ✓ source_id={source_id}, {len(segment_ids)} segments")
 

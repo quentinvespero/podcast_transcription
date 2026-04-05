@@ -34,11 +34,12 @@ def init_db(db_path: str) -> None:
     with _connect(db_path) as conn:
         conn.executescript("""
             CREATE TABLE IF NOT EXISTS sources (
-                id       INTEGER PRIMARY KEY AUTOINCREMENT,
-                title    TEXT    NOT NULL,
-                url      TEXT    UNIQUE NOT NULL,
-                status   TEXT    NOT NULL DEFAULT 'pending',
-                added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                id          INTEGER   PRIMARY KEY AUTOINCREMENT,
+                title       TEXT      NOT NULL,
+                url         TEXT      UNIQUE NOT NULL,
+                description TEXT,
+                status      TEXT      NOT NULL DEFAULT 'pending',
+                added_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
             CREATE TABLE IF NOT EXISTS segments (
@@ -79,6 +80,12 @@ def init_db(db_path: str) -> None:
         except sqlite3.OperationalError:
             pass  # column already exists
 
+        # Migration: add description column to existing databases that predate it
+        try:
+            conn.execute("ALTER TABLE sources ADD COLUMN description TEXT")
+        except sqlite3.OperationalError:
+            pass  # column already exists
+
 
 def get_source_status(db_path: str, url: str) -> str | None:
     """
@@ -110,15 +117,15 @@ def delete_source(db_path: str, url: str) -> None:
         conn.execute("DELETE FROM sources WHERE url = ?", (url,))
 
 
-def insert_source(db_path: str, title: str, url: str) -> int:
+def insert_source(db_path: str, title: str, url: str, description: str | None = None) -> int:
     """
     Insert a source row (or ignore if URL already exists).
     Returns the source id in either case.
     """
     with _connect(db_path) as conn:
         conn.execute(
-            "INSERT OR IGNORE INTO sources (title, url) VALUES (?, ?)",
-            (title, url),
+            "INSERT OR IGNORE INTO sources (title, url, description) VALUES (?, ?, ?)",
+            (title, url, description),
         )
         row = conn.execute("SELECT id FROM sources WHERE url = ?", (url,)).fetchone()
         return row["id"]
