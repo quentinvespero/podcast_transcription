@@ -1,7 +1,7 @@
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, PointStruct, VectorParams
 
-from src.config import EMBEDDING_DIMENSION, QDRANT_COLLECTION, QDRANT_HOST, QDRANT_PORT
+from src.config import EMBEDDING_DIMENSION, QDRANT_COLLECTION, QDRANT_PATH
 
 # Number of points per upsert batch — keeps individual requests small enough
 # to avoid write timeouts on large podcasts.
@@ -9,8 +9,7 @@ UPSERT_BATCH_SIZE = 100
 
 
 def _get_client() -> QdrantClient:
-    # Generous timeout: embedding payloads can be large for long podcasts
-    return QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT, timeout=60)
+    return QdrantClient(path=QDRANT_PATH)
 
 
 def _ensure_collection(client: QdrantClient) -> None:

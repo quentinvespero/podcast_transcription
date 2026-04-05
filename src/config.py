@@ -1,13 +1,15 @@
 import os
 
 # ── Storage paths ────────────────────────────────────────────────────────────
-DATA_DIR = "data"
+# Anchor all paths to the project root so the script works regardless of cwd.
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+DATA_DIR  = os.path.join(_PROJECT_ROOT, "data")
 AUDIO_DIR = os.path.join(DATA_DIR, "audio")
 DB_PATH   = os.path.join(DATA_DIR, "transcriptions.db")
 
 # ── Qdrant (vector database) ─────────────────────────────────────────────────
-QDRANT_HOST       = "localhost"
-QDRANT_PORT       = 6333
+QDRANT_PATH       = os.path.join(DATA_DIR, "qdrant_db")
 QDRANT_COLLECTION = "segments"
 
 # ── Transcription ────────────────────────────────────────────────────────────

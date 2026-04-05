@@ -2,9 +2,12 @@ import os
 import yt_dlp
 
 
-def download_audio(url: str, output_dir: str) -> dict:
+def download_audio(url: str, output_dir: str, force: bool = False) -> dict:
     """
     Download audio from a URL using yt-dlp and convert it to MP3.
+
+    If the file already exists on disk and force=False, the download is skipped
+    and the cached file is returned immediately.
 
     Returns a dict with:
       - title (str): human-readable title from the source
@@ -30,6 +33,23 @@ def download_audio(url: str, output_dir: str) -> dict:
     }
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        # Fetch metadata without downloading to check for a cached file.
+        # prepare_filename() applies the same sanitization yt-dlp uses when
+        # writing to disk, so the derived path is reliable even for RSS feeds
+        # whose IDs contain special characters.
+        info = ydl.extract_info(url, download=False)
+
+        if not force:
+            raw_path = ydl.prepare_filename(info)
+            expected_mp3 = os.path.splitext(raw_path)[0] + ".mp3"
+            if os.path.isfile(expected_mp3):
+                print("      [cache] Audio file already on disk, skipping download.")
+                return {
+                    "title": info.get("title", "unknown"),
+                    "url": url,
+                    "file_path": expected_mp3,
+                }
+
         info = ydl.extract_info(url, download=True)
 
     # Use the actual filepath reported by yt-dlp after post-processing.
