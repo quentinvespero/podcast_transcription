@@ -80,6 +80,16 @@ A `PROGRESS.md` file at the root tracks the status of each pipeline step and a m
 
 **Do not** update it for minor fixes, refactors, or work-in-progress changes.
 
+### Keeping COMMANDS.md up to date
+
+`COMMANDS.md` lists all CLI commands and their options for quick reference.
+
+**Update it when:**
+- A new subcommand is added to `main.py`
+- An argument is added, removed, or renamed on an existing command
+
+**Do not** update it for internal changes that don't affect the CLI interface.
+
 ### Keeping CLAUDE.md up to date
 
 Update `CLAUDE.md` when:
