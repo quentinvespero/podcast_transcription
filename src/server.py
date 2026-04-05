@@ -12,7 +12,7 @@ import threading
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import AnyHttpUrl, BaseModel
 
 from src import embedder
 from src.config import DB_PATH
@@ -20,6 +20,12 @@ from src.database import sqlite_store, vector_store
 from src import pipeline
 
 app = FastAPI()
+
+
+class _PipelineError:
+    """Typed sentinel used to signal a pipeline exception across the queue."""
+    def __init__(self, message: str) -> None:
+        self.message = message
 
 
 # ── Health ────────────────────────────────────────────────────────────────────
@@ -33,7 +39,7 @@ async def health():
 # ── Ingest (SSE) ──────────────────────────────────────────────────────────────
 
 class IngestRequest(BaseModel):
-    url: str
+    url: AnyHttpUrl
     language: str | None = None
     force: bool = False
     initial_prompt: str | None = None
@@ -48,7 +54,7 @@ async def ingest_endpoint(body: IngestRequest):
       (default) — progress message string
       error     — pipeline raised an exception; data contains {"message": "..."}
     """
-    msg_queue: queue.Queue[str | None] = queue.Queue()
+    msg_queue: queue.Queue[str | _PipelineError | None] = queue.Queue()
 
     def on_progress(msg: str) -> None:
         msg_queue.put(msg)
@@ -56,14 +62,14 @@ async def ingest_endpoint(body: IngestRequest):
     def run() -> None:
         try:
             pipeline.ingest(
-                body.url,
+                str(body.url),
                 body.language,
                 body.force,
                 body.initial_prompt,
                 on_progress=on_progress,
             )
         except Exception as e:
-            msg_queue.put(f"__error__:{e}")
+            msg_queue.put(_PipelineError(str(e)))
         finally:
             # Always unblock the async reader, even if an exception was raised
             msg_queue.put(None)
@@ -76,8 +82,8 @@ async def ingest_endpoint(body: IngestRequest):
             msg = await loop.run_in_executor(None, msg_queue.get)
             if msg is None:
                 break
-            if msg.startswith("__error__:"):
-                yield f"event: error\ndata: {json.dumps({'message': msg[10:]})}\n\n"
+            if isinstance(msg, _PipelineError):
+                yield f"event: error\ndata: {json.dumps({'message': msg.message})}\n\n"
             else:
                 yield f"data: {json.dumps({'message': msg})}\n\n"
 
