@@ -1,4 +1,5 @@
 import os
+from collections.abc import Callable
 
 from src import downloader, embedder, transcriber
 from src.config import AUDIO_DIR, DB_PATH
@@ -6,7 +7,13 @@ from src.database import sqlite_store, vector_store
 from src.utils import normalize_url
 
 
-def ingest(url: str, language: str | None = None, force: bool = False, initial_prompt: str | None = None) -> None:
+def ingest(
+    url: str,
+    language: str | None = None,
+    force: bool = False,
+    initial_prompt: str | None = None,
+    on_progress: Callable[[str], None] = print,
+) -> None:
     """
     Full ingest pipeline for a single audio URL:
       1. Download audio via yt-dlp
@@ -21,6 +28,8 @@ def ingest(url: str, language: str | None = None, force: bool = False, initial_p
         force:          Re-download and re-transcribe even if already processed.
         initial_prompt: Optional context hint for Whisper (e.g. "React, TypeScript").
                         See transcriber.transcribe() for details.
+        on_progress:    Callback for progress messages. Defaults to print so the
+                        CLI works unchanged. The server passes a queue-backed fn.
     """
     url = normalize_url(url)
 
@@ -34,7 +43,7 @@ def ingest(url: str, language: str | None = None, force: bool = False, initial_p
     if not force:
         status = sqlite_store.get_source_status(DB_PATH, url)
         if status == "complete":
-            print(f"[skip] {url} already ingested. Use --force to re-process.")
+            on_progress(f"[skip] {url} already ingested. Use --force to re-process.")
             return
 
     if force:
@@ -43,23 +52,23 @@ def ingest(url: str, language: str | None = None, force: bool = False, initial_p
         sqlite_store.delete_source(DB_PATH, url)
 
     # ── 1. Download ──────────────────────────────────────────────────────────
-    print(f"[1/4] Downloading audio from {url} …")
+    on_progress(f"[1/4] Downloading audio from {url} …")
     audio_info = downloader.download_audio(url, AUDIO_DIR, force=force)
-    print(f"      ✓ {audio_info['title']}")
+    on_progress(f"      ✓ {audio_info['title']}")
 
     # ── 2. Transcribe ────────────────────────────────────────────────────────
-    print("[2/4] Transcribing …")
+    on_progress("[2/4] Transcribing …")
     segments = transcriber.transcribe(audio_info["file_path"], language=language, initial_prompt=initial_prompt)
-    print(f"      ✓ {len(segments)} segments")
+    on_progress(f"      ✓ {len(segments)} segments")
 
     # ── 3. SQLite ────────────────────────────────────────────────────────────
-    print("[3/4] Storing in SQLite …")
+    on_progress("[3/4] Storing in SQLite …")
     source_id   = sqlite_store.insert_source(DB_PATH, audio_info["title"], url, audio_info["description"])
     segment_ids = sqlite_store.insert_segments(DB_PATH, source_id, segments)
-    print(f"      ✓ source_id={source_id}, {len(segment_ids)} segments")
+    on_progress(f"      ✓ source_id={source_id}, {len(segment_ids)} segments")
 
     # ── 4. Qdrant ────────────────────────────────────────────────────────────
-    print("[4/4] Generating embeddings and storing in Qdrant …")
+    on_progress("[4/4] Generating embeddings and storing in Qdrant …")
     texts    = [s["text"] for s in segments]
     vectors  = embedder.embed_texts(texts)
     payloads = [
@@ -74,7 +83,7 @@ def ingest(url: str, language: str | None = None, force: bool = False, initial_p
         for s in segments
     ]
     vector_store.insert_segments(segment_ids, vectors, payloads)
-    print(f"      ✓ {len(segment_ids)} embeddings stored")
+    on_progress(f"      ✓ {len(segment_ids)} embeddings stored")
 
     sqlite_store.mark_source_complete(DB_PATH, source_id)
-    print("\nDone!")
+    on_progress("\nDone!")

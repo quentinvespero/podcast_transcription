@@ -148,6 +148,16 @@ def insert_segments(db_path: str, source_id: int, segments: list[dict]) -> list[
         return ids
 
 
+def list_sources(db_path: str) -> list[dict]:
+    """Return all sources ordered by most recently added first."""
+    with _connect(db_path) as conn:
+        rows = conn.execute(
+            "SELECT id, title, url, description, status, added_at"
+            " FROM sources ORDER BY added_at DESC"
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+
 def search_keyword(db_path: str, query: str, limit: int = 10) -> list[dict]:
     """
     Full-text search across all segments.
