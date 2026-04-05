@@ -1,4 +1,4 @@
-# Podcast Audio Extractor
+# Voxearch
 
 A local CLI tool that downloads audio from a URL, transcribes it on-device, and stores the result in a searchable database.
 
