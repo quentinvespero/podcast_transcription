@@ -11,11 +11,15 @@ import argparse
 
 from src.config import DB_PATH
 from src.database import sqlite_store, vector_store
-from src import embedder
+from src import embedder, updater
 from src.pipeline import ingest
 
 
 # ── Command handlers ─────────────────────────────────────────────────────────
+
+def _cmd_update(_args: argparse.Namespace) -> None:
+    updater.update_ytdlp()
+
 
 def _cmd_ingest(args: argparse.Namespace) -> None:
     ingest(args.url, language=args.language, force=args.force, initial_prompt=args.initial_prompt)
@@ -57,6 +61,13 @@ def _build_parser() -> argparse.ArgumentParser:
         description="Transcribe audio and search transcripts"
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
+
+    # ── update ───────────────────────────────────────────────────────────────
+    update_p = subparsers.add_parser(
+        "update",
+        help="Check for a newer yt-dlp version and upgrade if available",
+    )
+    update_p.set_defaults(func=_cmd_update)
 
     # ── ingest ────────────────────────────────────────────────────────────────
     ingest_p = subparsers.add_parser(
