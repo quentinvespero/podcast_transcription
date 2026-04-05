@@ -1,3 +1,5 @@
+import os
+
 from src import downloader, embedder, transcriber
 from src.config import AUDIO_DIR, DB_PATH
 from src.database import sqlite_store, vector_store
@@ -21,6 +23,11 @@ def ingest(url: str, language: str | None = None, force: bool = False, initial_p
                         See transcriber.transcribe() for details.
     """
     url = normalize_url(url)
+
+    # Ensure storage directories exist before any file operations
+    os.makedirs(AUDIO_DIR, exist_ok=True)
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+
     sqlite_store.init_db(DB_PATH)
 
     # ── Deduplication check ───────────────────────────────────────────────────
