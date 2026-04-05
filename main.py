@@ -18,7 +18,7 @@ from src.pipeline import ingest
 # ── Command handlers ─────────────────────────────────────────────────────────
 
 def _cmd_ingest(args: argparse.Namespace) -> None:
-    ingest(args.url, language=args.language, force=args.force)
+    ingest(args.url, language=args.language, force=args.force, initial_prompt=args.initial_prompt)
 
 
 def _cmd_search_keyword(args: argparse.Namespace) -> None:
@@ -77,6 +77,12 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         default=False,
         help="Re-download and re-transcribe even if already processed.",
+    )
+    ingest_p.add_argument(
+        "--prompt", "-p",
+        dest="initial_prompt",
+        default=None,
+        help="Context hint for Whisper (e.g. 'React, TypeScript, serverless'). Improves recognition of domain-specific terms.",
     )
     ingest_p.set_defaults(func=_cmd_ingest)
 

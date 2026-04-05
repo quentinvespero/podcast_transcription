@@ -4,7 +4,7 @@ from src.database import sqlite_store, vector_store
 from src.utils import normalize_url
 
 
-def ingest(url: str, language: str | None = None, force: bool = False) -> None:
+def ingest(url: str, language: str | None = None, force: bool = False, initial_prompt: str | None = None) -> None:
     """
     Full ingest pipeline for a single audio URL:
       1. Download audio via yt-dlp
@@ -13,10 +13,12 @@ def ingest(url: str, language: str | None = None, force: bool = False) -> None:
       4. Embed segments and store in Qdrant (semantic search)
 
     Args:
-        url:      Any URL supported by yt-dlp (YouTube, SoundCloud, etc.)
-        language: ISO 639-1 language hint for Whisper (e.g. "fr", "en").
-                  None = auto-detect (slightly slower).
-        force:    Re-download and re-transcribe even if already processed.
+        url:            Any URL supported by yt-dlp (YouTube, SoundCloud, etc.)
+        language:       ISO 639-1 language hint for Whisper (e.g. "fr", "en").
+                        None = auto-detect (slightly slower).
+        force:          Re-download and re-transcribe even if already processed.
+        initial_prompt: Optional context hint for Whisper (e.g. "React, TypeScript").
+                        See transcriber.transcribe() for details.
     """
     url = normalize_url(url)
     sqlite_store.init_db(DB_PATH)
@@ -40,7 +42,7 @@ def ingest(url: str, language: str | None = None, force: bool = False) -> None:
 
     # ── 2. Transcribe ────────────────────────────────────────────────────────
     print("[2/4] Transcribing …")
-    segments = transcriber.transcribe(audio_info["file_path"], language=language)
+    segments = transcriber.transcribe(audio_info["file_path"], language=language, initial_prompt=initial_prompt)
     print(f"      ✓ {len(segments)} segments")
 
     # ── 3. SQLite ────────────────────────────────────────────────────────────

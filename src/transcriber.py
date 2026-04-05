@@ -17,15 +17,20 @@ def transcribe(
     audio_path: str,
     model: str = TRANSCRIPTION_MODEL,
     language: str | None = None,
+    initial_prompt: str | None = None,
 ) -> list[dict]:
     """
     Transcribe an audio file using mlx-whisper (Apple Silicon optimised).
 
     Args:
-        audio_path: Path to the .mp3 / .wav file.
-        model:      HuggingFace repo for the MLX Whisper weights.
-        language:   ISO 639-1 language code (e.g. "fr", "en").
-                    Pass None to let Whisper auto-detect.
+        audio_path:     Path to the .mp3 / .wav file.
+        model:          HuggingFace repo for the MLX Whisper weights.
+        language:       ISO 639-1 language code (e.g. "fr", "en").
+                        Pass None to let Whisper auto-detect.
+        initial_prompt: Optional context string prepended before decoding.
+                        Useful for biasing Whisper toward domain-specific
+                        vocabulary or proper nouns (e.g. "React, TypeScript, GraphQL").
+                        It's a soft hint — Whisper may still produce other words.
 
     Returns:
         List of segment dicts, each with:
@@ -42,6 +47,7 @@ def transcribe(
         audio_path,
         path_or_hf_repo=model,
         language=language,
+        initial_prompt=initial_prompt,
         # verbose=True prints each segment as it is decoded — useful progress indicator
         verbose=True,
         # word_timestamps adds overhead and we don't need them
