@@ -2,12 +2,12 @@
 
 ## Stack
 
-| Layer | Choice | Reason |
-|-------|--------|--------|
-| Frontend | SwiftUI (macOS app) | Native macOS experience |
-| Backend | Python + FastAPI | Reuses existing ML stack (yt-dlp, mlx-whisper, etc.) |
-| Bridge | HTTP on `localhost:8765` | SwiftUI spawns uvicorn as a subprocess |
-| Vector DB | Qdrant embedded (`QdrantClient(path=...)`) | No Docker, same API |
+| Layer | Stack |
+|-------|-------|
+| Frontend | SwiftUI |
+| Backend | Python, FastAPI, uvicorn |
+| Bridge | HTTP `localhost:8765` |
+| Vector DB | Qdrant embedded |
 
 ---
 
