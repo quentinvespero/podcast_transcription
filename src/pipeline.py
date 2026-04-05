@@ -44,7 +44,7 @@ def ingest(url: str, language: str | None = None, force: bool = False, initial_p
 
     # ── 1. Download ──────────────────────────────────────────────────────────
     print(f"[1/4] Downloading audio from {url} …")
-    audio_info = downloader.download_audio(url, AUDIO_DIR)
+    audio_info = downloader.download_audio(url, AUDIO_DIR, force=force)
     print(f"      ✓ {audio_info['title']}")
 
     # ── 2. Transcribe ────────────────────────────────────────────────────────
