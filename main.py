@@ -12,7 +12,7 @@ import argparse
 from src.config import DB_PATH
 from src.database import sqlite_store, vector_store
 from src import embedder, updater
-from src.pipeline import ingest
+from src.pipeline import ingest, INGEST_STEPS
 
 
 # ── Command handlers ─────────────────────────────────────────────────────────
@@ -21,8 +21,25 @@ def _cmd_update(_args: argparse.Namespace) -> None:
     updater.update_ytdlp()
 
 
+def _on_progress(event: dict) -> None:
+    status = event.get("status")
+    step   = event.get("step", "?")
+    total  = event.get("total", INGEST_STEPS)
+    label  = event.get("label", "")
+    detail = event.get("detail", "")
+
+    if status == "running":
+        print(f"[{step}/{total}] {label} …")
+    elif status == "done":
+        print(f"      ✓ {detail}" if detail else "      ✓")
+    elif status == "skipped":
+        print(f"[skip] {detail}")
+    elif status == "complete":
+        print("\nDone!")
+
+
 def _cmd_ingest(args: argparse.Namespace) -> None:
-    ingest(args.url, language=args.language, force=args.force, initial_prompt=args.initial_prompt)
+    ingest(args.url, language=args.language, force=args.force, initial_prompt=args.initial_prompt, on_progress=_on_progress)
 
 
 def _cmd_search_keyword(args: argparse.Namespace) -> None:

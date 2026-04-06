@@ -48,16 +48,17 @@ class IngestRequest(BaseModel):
 @app.post("/ingest")
 async def ingest_endpoint(body: IngestRequest):
     """
-    Run the ingest pipeline and stream progress messages as Server-Sent Events.
+    Run the ingest pipeline and stream progress as Server-Sent Events.
 
     Event types:
-      (default) — progress message string
+      (default) — structured progress dict: {step, total, label, status, detail?}
+                  or {status: "skipped"|"complete"}
       error     — pipeline raised an exception; data contains {"message": "..."}
     """
-    msg_queue: queue.Queue[str | _PipelineError | None] = queue.Queue()
+    msg_queue: queue.Queue[dict | _PipelineError | None] = queue.Queue()
 
-    def on_progress(msg: str) -> None:
-        msg_queue.put(msg)
+    def on_progress(event: dict) -> None:
+        msg_queue.put(event)
 
     def run() -> None:
         try:
@@ -85,7 +86,7 @@ async def ingest_endpoint(body: IngestRequest):
             if isinstance(msg, _PipelineError):
                 yield f"event: error\ndata: {json.dumps({'message': msg.message})}\n\n"
             else:
-                yield f"data: {json.dumps({'message': msg})}\n\n"
+                yield f"data: {json.dumps(msg)}\n\n"
 
     return StreamingResponse(stream(), media_type="text/event-stream")
 
