@@ -117,6 +117,17 @@ def delete_source(db_path: str, url: str) -> None:
         conn.execute("DELETE FROM sources WHERE url = ?", (url,))
 
 
+def delete_source_by_id(db_path: str, source_id: int) -> bool:
+    """
+    Delete a source and all its segments by ID.
+    Returns True if a row was deleted, False if the ID was not found.
+    Note: corresponding Qdrant points are NOT cleaned up here.
+    """
+    with _connect(db_path) as conn:
+        cursor = conn.execute("DELETE FROM sources WHERE id = ?", (source_id,))
+        return cursor.rowcount > 0
+
+
 def insert_source(db_path: str, title: str, url: str, description: str | None = None) -> int:
     """
     Insert a source row (or ignore if URL already exists).

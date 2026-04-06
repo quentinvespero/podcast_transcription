@@ -111,7 +111,19 @@ async def search_keyword_endpoint(q: str = Query(..., min_length=1), limit: int 
 async def search_semantic_endpoint(q: str = Query(..., min_length=1), limit: int = 10):
     """Semantic similarity search using the same embedding model as ingest."""
     try:
-        query_vector = embedder.embed_texts([q])[0]
+        # Run in a thread — embed_texts is CPU-bound and would block the event loop
+        query_vector = (await asyncio.to_thread(embedder.embed_texts, [q]))[0]
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Embedding failed: {e}")
     return vector_store.search_semantic(query_vector, limit=limit)
+
+
+# ── Sources (delete) ──────────────────────────────────────────────────────────
+
+@app.delete("/sources/{source_id}")
+async def delete_source_endpoint(source_id: int):
+    """Delete a source and all its segments by ID."""
+    deleted = sqlite_store.delete_source_by_id(DB_PATH, source_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Source not found")
+    return {"deleted": source_id}
